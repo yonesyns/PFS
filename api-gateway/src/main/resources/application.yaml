@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: customer-route
+          uri: lb://CUSTOMER-SERVICE        # lb = load balancer via Eureka
+          predicates:
+            - Path=/api/customers/**        # toute URL qui commence par /api/customers
+
+        - id: vehicule-route
+          uri: lb://VEHICULE-SERVICE
+          predicates:
+            - Path=/api/vehicules/**
+
+        - id: payment-route
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/payments/**
+
+        - id: document-route
+          uri: lb://DOCUMENT-SERVICE
+          predicates:
+            - Path=/api/documents/**
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:4200"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

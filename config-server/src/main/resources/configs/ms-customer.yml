@@ -1,0 +1,4 @@
+server:
+  port: 8081
+
+message: "Config Customer chargée depuis le Config Server !"
