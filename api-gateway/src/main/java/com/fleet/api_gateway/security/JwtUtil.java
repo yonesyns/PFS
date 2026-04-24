@@ -6,7 +6,9 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 import java.security.Key;
+import org.springframework.stereotype.Component;
 
+@Component
 public class JwtUtil {
 
     private final String SECRET = "mysecretkeymysecretkeymysecretkey"; // 32+ chars

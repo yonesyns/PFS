@@ -5,12 +5,14 @@ spring:
   application:
     name: api-gateway
   cloud:
+    config:
+      enabled: false
     gateway:
       routes:
         - id: customer-route
-          uri: lb://CUSTOMER-SERVICE        # lb = load balancer via Eureka
+          uri: lb://CUSTOMER-SERVICE
           predicates:
-            - Path=/api/customers/**        # toute URL qui commence par /api/customers
+            - Path=/api/customers/**
 
         - id: vehicule-route
           uri: lb://VEHICULE-SERVICE
