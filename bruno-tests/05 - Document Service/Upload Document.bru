@@ -1,0 +1,40 @@
+meta {
+  name: Upload Document
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/documents/upload
+  body: multipartForm
+}
+
+body:multipart-form {
+  documentType: DRIVER_LICENSE
+  entityId: {{testCustomerId}}
+  entityType: CUSTOMER
+  description: Driver license for John Doe
+  file: @test-document.txt
+}
+
+assert {
+  res.status: eq 201
+  res.body.documentType: eq DRIVER_LICENSE
+  res.body.entityId: eq {{testCustomerId}}
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("testDocumentId", res.getBody().id);
+  }
+}
+
+tests {
+  test("Document uploaded successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().documentType).to.equal("DRIVER_LICENSE");
+    expect(res.getBody().entityType).to.equal("CUSTOMER");
+    expect(res.getBody().status).to.equal("UPLOADED");
+    expect(res.getBody().fileName).to.exist;
+  });
+}

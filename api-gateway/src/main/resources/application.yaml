@@ -4,35 +4,35 @@ server:
 spring:
   application:
     name: api-gateway
+  config:
+    import: "optional:configserver:http://localhost:8888"
   cloud:
-    config:
-      enabled: false
     gateway:
       routes:
         - id: customer-route
-          uri: lb://CUSTOMER-SERVICE
+          uri: lb://customer-service
           predicates:
             - Path=/api/customers/**
-
-        - id: vehicule-route
-          uri: lb://VEHICULE-SERVICE
+          filters:
+            - id: vehicle-route
+          uri: lb://vehicle-service
           predicates:
-            - Path=/api/vehicules/**
+            - Path=/api/vehicles/**
 
         - id: payment-route
-          uri: lb://PAYMENT-SERVICE
+          uri: lb://payment-service
           predicates:
             - Path=/api/payments/**
 
         - id: document-route
-          uri: lb://DOCUMENT-SERVICE
+          uri: lb://document-service
           predicates:
             - Path=/api/documents/**
 
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "http://localhost:4200"
+            allowedOrigins: "*"
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
@@ -41,3 +41,16 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 0.0
+
+jwt:
+  secret: mySecretKey
+  expiration: 86400000

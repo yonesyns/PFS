@@ -1,0 +1,9 @@
+com\fleet\vehicle\dto\VehicleDTO.class
+com\fleet\vehicle\config\RedisConfig.class
+com\fleet\vehicle\model\VehicleStatus.class
+com\fleet\vehicle\repository\VehicleRepository.class
+com\fleet\vehicle\model\Vehicle.class
+com\fleet\vehicle\VehicleServiceApplication.class
+com\fleet\vehicle\model\VehicleType.class
+com\fleet\vehicle\controller\VehicleController.class
+com\fleet\vehicle\service\VehicleService.class

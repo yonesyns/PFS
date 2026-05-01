@@ -1,0 +1,25 @@
+meta {
+  name: Get Available Vehicles
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/vehicles/available
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Get available vehicles", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(Array.isArray(res.getBody())).to.be.true;
+    
+    // Check if all vehicles have AVAILABLE status
+    res.getBody().forEach(vehicle => {
+      expect(vehicle.status).to.equal("AVAILABLE");
+    });
+  });
+}

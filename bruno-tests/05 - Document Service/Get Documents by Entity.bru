@@ -1,0 +1,26 @@
+meta {
+  name: Get Documents by Entity
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/documents/entity/{{testCustomerId}}?entityType=CUSTOMER
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Get documents by entity", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(Array.isArray(res.getBody())).to.be.true;
+    
+    // Check if all documents belong to the entity
+    res.getBody().forEach(document => {
+      expect(document.entityId).to.equal(parseInt(bru.getVar("testCustomerId")));
+      expect(document.entityType).to.equal("CUSTOMER");
+    });
+  });
+}

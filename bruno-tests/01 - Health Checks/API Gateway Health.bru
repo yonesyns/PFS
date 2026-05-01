@@ -1,0 +1,21 @@
+meta {
+  name: API Gateway Health
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/actuator/health
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq UP
+}
+
+tests {
+  test("API Gateway is UP", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("UP");
+  });
+}

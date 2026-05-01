@@ -1,0 +1,21 @@
+meta {
+  name: Customer Service Health
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{customerServiceUrl}}/actuator/health
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq UP
+}
+
+tests {
+  test("Customer Service is UP", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("UP");
+  });
+}
