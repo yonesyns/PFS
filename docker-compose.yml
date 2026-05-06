@@ -1,0 +1,20 @@
+services:
+  customer-db:
+    image: postgres:16
+    container_name: customer-db
+    environment:
+      POSTGRES_DB: customer_db
+      POSTGRES_USER: customer_user
+      POSTGRES_PASSWORD: customer_pass
+    ports:
+      - "5433:5432"
+
+  vehicle-db:
+    image: postgres:16
+    container_name: vehicle-db
+    environment:
+      POSTGRES_DB: vehicle_db
+      POSTGRES_USER: vehicle_user
+      POSTGRES_PASSWORD: vehicle_pass
+    ports:
+      - "5434:5432"
