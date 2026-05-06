@@ -6,7 +6,7 @@ spring:
     name: vehicle-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5434/vehicle_db
+    url: jdbc:postgresql://vehicle-db:5432/vehicle_db
     username: vehicle_user
     password: vehicle_pass
     driver-class-name: org.postgresql.Driver

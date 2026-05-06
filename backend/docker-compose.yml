@@ -1,4 +1,5 @@
 services:
+
   customer-db:
     image: postgres:16
     container_name: customer-db
@@ -6,8 +7,6 @@ services:
       POSTGRES_DB: customer_db
       POSTGRES_USER: customer_user
       POSTGRES_PASSWORD: customer_pass
-    ports:
-      - "5433:5432"
 
   vehicle-db:
     image: postgres:16
@@ -16,5 +15,19 @@ services:
       POSTGRES_DB: vehicle_db
       POSTGRES_USER: vehicle_user
       POSTGRES_PASSWORD: vehicle_pass
+
+  customer-service:
+    build: ./customer-service
+    container_name: customer-service
+    depends_on:
+      - customer-db
     ports:
-      - "5434:5432"
+      - "8081:8081"
+
+  vehicle-service:
+    build: ./vehicle-service
+    container_name: vehicle-service
+    depends_on:
+      - vehicle-db
+    ports:
+      - "8082:8082"
