@@ -23,3 +23,17 @@ spring:
                 - Path=/api/vehicles/**
               filters:
                 - StripPrefix=1
+
+            - id: document-service-route
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/documents/**
+              filters:
+                - StripPrefix=1
+
+            - id: payment-service-route
+              uri: http://localhost:8083
+              predicates:
+                - Path=/api/payments/**
+              filters:
+                - StripPrefix=1

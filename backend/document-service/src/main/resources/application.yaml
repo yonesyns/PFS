@@ -1,0 +1,19 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: document-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5436/document_db
+    username: document_user
+    password: document_pass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  flyway:
+    enabled: true
