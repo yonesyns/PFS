@@ -1,45 +1,57 @@
 server:
-  port: 8084
+  port: 8083
 
 spring:
   application:
     name: document-service
-  config:
-    import: "optional:configserver:http://localhost:8888"
-  datasource:
-    url: jdbc:h2:mem:documentdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: password
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: update
-  h2:
-    console:
-      enabled: true
+  data:
+    mongodb:
+      uri: mongodb://fleet_user:fleet_password@mongodb-document:27017/fleet_documents?authSource=admin
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
-  kafka:
-    bootstrap-servers: localhost:9092
-    properties:
-      spring.json.trusted.packages: "*"
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: fleet_user
+    password: fleet_password
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 1000
+          multiplier: 2
+          max-attempts: 3
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
+fleet:
+  rabbitmq:
+    exchange: fleet.topic
+
+minio:
+  endpoint: http://minio:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: fleet-documents
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
-  tracing:
-    sampling:
-      probability: 0.0
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.fleet.document: DEBUG
+    org.springframework.amqp: INFO
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

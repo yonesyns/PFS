@@ -1,7 +1,0 @@
-This is a test document for Fleet Management System.
-Document Type: Driver License
-Customer: John Doe
-Date: 2024-01-15
-Status: Valid
-
-This file is used for testing document upload functionality.

@@ -1,211 +1,345 @@
-# Fleet Management Microservices
+# 🚗 Fleet Management System - B2B Microservices
 
-A comprehensive microservices-based fleet management system built with Spring Boot, featuring service discovery, API gateway, distributed tracing, and monitoring.
+A complete B2B Fleet Management platform built with Spring Boot microservices architecture.
 
-## Architecture
+## 📐 Architecture
 
-### Microservices
-- **Customer Service** (Port 8081) - Customer management
-- **Vehicle Service** (Port 8082) - Vehicle fleet management  
-- **Payment Service** (Port 8083) - Payment processing
-- **Document Service** (Port 8084) - Document management
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SPRING CLOUD GATEWAY                        │
+│                     Port: 8080                                  │
+└──────────────┬──────────────┬──────────────┬────────────────────┘
+               │              │              │
+        ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼─────┐ ┌──────────▼──┐
+        │   CUSTOMER  │ │  VEHICLE   │ │ DOCUMENT │ │   PAYMENT   │
+        │   SERVICE   │ │  SERVICE   │ │ SERVICE  │ │   SERVICE   │
+        │  Port: 8081 │ │  Port:8082 │ │ Port:8083│ │  Port:8084  │
+        │ PostgreSQL  │ │ PostgreSQL │ │ MongoDB  │ │  PostgreSQL │
+        └──────┬──────┘ └─────┬──────┘ └────┬─────┘ └──────┬────┘
+               │              │             │              │
+               └──────────────┴─────────────┴──────────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │     RABBITMQ       │
+                    │    Port: 5672      │
+                    │  Mgmt UI: 15672    │
+                    └────────────────────┘
+```
 
-### Infrastructure Services
-- **Eureka Server** (Port 8761) - Service discovery
-- **Config Server** (Port 8888) - Centralized configuration
-- **API Gateway** (Port 8080) - Routing and rate limiting
-- **Redis** (Port 6379) - Caching and rate limiting
-- **Kafka** (Port 9092) - Async messaging
-- **Zipkin** (Port 9411) - Distributed tracing
-- **Prometheus** (Port 9090) - Metrics collection
-- **Grafana** (Port 3000) - Monitoring dashboards
+## 🏗️ Services
 
-## Features
+| Service | Port | Database | Description |
+|---------|------|----------|-------------|
+| API Gateway | 8080 | Redis | Entry point, routing, rate limiting |
+| Customer Service | 8081 | PostgreSQL | B2B customer management |
+| Vehicle Service | 8082 | PostgreSQL | Fleet vehicle management |
+| Document Service | 8083 | MongoDB + MinIO | Document storage & management |
+| Payment Service | 8084 | PostgreSQL | Invoicing & subscriptions |
 
-### Core Features
-- ✅ Service Discovery with Eureka
-- ✅ API Gateway with routing and rate limiting
-- ✅ Centralized configuration with Config Server
-- ✅ Redis caching
-- ✅ Kafka async messaging
-- ✅ JWT security
-- ✅ Distributed tracing with Zipkin
-- ✅ Monitoring with Prometheus + Grafana
-- ✅ Docker Compose for local development
-- ✅ Kubernetes configurations for production
-
-### API Endpoints
-
-#### Customer Service
-- `GET /api/customers` - Get all customers
-- `GET /api/customers/{id}` - Get customer by ID
-- `POST /api/customers` - Create customer
-- `PUT /api/customers/{id}` - Update customer
-
-#### Vehicle Service  
-- `GET /api/vehicles` - Get all vehicles
-- `GET /api/vehicles/{id}` - Get vehicle by ID
-- `GET /api/vehicles/available` - Get available vehicles
-- `POST /api/vehicles` - Create vehicle
-- `PUT /api/vehicles/{id}` - Update vehicle
-
-#### Payment Service
-- `POST /api/payments` - Process payment
-- `GET /api/payments/{id}` - Get payment by ID
-- `GET /api/payments/customer/{customerId}` - Get payments by customer
-- `GET /api/payments/booking/{bookingId}` - Get payments by booking
-
-#### Document Service
-- `POST /api/documents/upload` - Upload document
-- `GET /api/documents/{id}` - Get document by ID
-- `GET /api/documents/entity/{entityId}` - Get documents by entity
-- `PUT /api/documents/{id}/status` - Update document status
-- `DELETE /api/documents/{id}` - Delete document
-
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
-- Java 17+
-- Maven 3.6+
 - Docker & Docker Compose
+- Java 21 (for local development)
+- Maven 3.9+
 
-### Local Development
+### Run with Docker Compose
 
-1. **Build all services:**
-   ```bash
-   ./build-all.bat
-   ```
+```bash
+# Clone the repository
+cd fleet-management
 
-2. **Start infrastructure services:**
-   ```bash
-   docker-compose up -d redis kafka zookeeper zipkin prometheus grafana
-   ```
+# Start all services
+docker-compose up -d
 
-3. **Start application services:**
-   ```bash
-   # Start in order
-   java -jar eureka-server/target/eureka-server-0.0.1-SNAPSHOT.jar
-   java -jar config-server/target/config-server-0.0.1-SNAPSHOT.jar
-   java -jar api-gateway/target/api-gateway-0.0.1-SNAPSHOT.jar
-   java -jar customer-service/target/customer-service-0.0.1-SNAPSHOT.jar
-   java -jar vehicle-service/target/vehicle-service-0.0.1-SNAPSHOT.jar
-   java -jar payment-service/target/payment-service-0.0.1-SNAPSHOT.jar
-   java -jar document-service/target/document-service-0.0.1-SNAPSHOT.jar
-   ```
+# Check service health
+docker-compose ps
 
-4. **Or use Docker Compose for everything:**
-   ```bash
-   docker-compose up
-   ```
+# View logs
+docker-compose logs -f api-gateway
+```
 
 ### Access Points
-- **API Gateway:** http://localhost:8080
-- **Eureka Dashboard:** http://localhost:8761
-- **Zipkin:** http://localhost:9411
-- **Prometheus:** http://localhost:9090
-- **Grafana:** http://localhost:3000 (admin/admin)
 
-### Kubernetes Deployment
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| API Gateway | http://localhost:8080 | - |
+| Customer Swagger | http://localhost:8081/swagger-ui.html | - |
+| Vehicle Swagger | http://localhost:8082/swagger-ui.html | - |
+| Document Swagger | http://localhost:8083/swagger-ui.html | - |
+| Payment Swagger | http://localhost:8084/swagger-ui.html | - |
+| RabbitMQ UI | http://localhost:15672 | fleet_user / fleet_password |
+| MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
 
-1. **Create namespace:**
-   ```bash
-   kubectl apply -f k8s/namespace.yaml
-   ```
+## 📋 API Endpoints
 
-2. **Deploy services:**
-   ```bash
-   kubectl apply -f k8s/
-   ```
-
-## Configuration
-
-### Environment Variables
-- `SPRING_PROFILES_ACTIVE` - Active profile (local, docker, k8s)
-- `EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE` - Eureka server URL
-- `SPRING_CONFIG_IMPORT` - Config server URL
-- `SPRING_REDIS_HOST` - Redis host
-- `SPRING_KAFKA_BOOTSTRAP_SERVERS` - Kafka brokers
-
-### Rate Limiting
-API Gateway includes rate limiting:
-- Customer/Vehicle services: 10 requests/second, burst 20
-- Payment/Document services: 5 requests/second, burst 10
-
-### Security
-JWT tokens required for protected endpoints. Include in Authorization header:
+### Customer Service (`/api/customers`)
 ```
-Authorization: Bearer <jwt-token>
+POST   /api/customers              # Register new customer (PENDING)
+GET    /api/customers/{id}         # Get customer by ID
+GET    /api/customers              # List all customers (paginated)
+GET    /api/customers/search       # Search customers
+GET    /api/customers/pending      # List pending customers
+PUT    /api/customers/{id}         # Update customer
+PATCH  /api/customers/{id}/validate # Validate customer (ADMIN)
+PATCH  /api/customers/{id}/status  # Update status (ADMIN)
+DELETE /api/customers/{id}         # Soft delete (ADMIN)
 ```
 
-## Monitoring
+### Vehicle Service (`/api/vehicles`)
+```
+POST   /api/vehicles               # Create vehicle
+GET    /api/vehicles/{id}          # Get vehicle by ID
+GET    /api/vehicles               # List all vehicles
+GET    /api/vehicles/by-customer/{customerId}
+GET    /api/vehicles/status/{status}
+GET    /api/vehicles/expiring-insurance?days=30
+GET    /api/vehicles/maintenance-due
+PUT    /api/vehicles/{id}          # Update vehicle
+PATCH  /api/vehicles/{id}/status   # Update status
+PATCH  /api/vehicles/{id}/assign   # Assign to customer
+PATCH  /api/vehicles/{id}/unassign # Unassign from customer
+DELETE /api/vehicles/{id}          # Delete vehicle
+```
 
-### Metrics
-All services expose Prometheus metrics at `/actuator/prometheus`
+### Document Service (`/api/documents`)
+```
+POST   /api/documents/upload       # Upload document (multipart)
+GET    /api/documents/{id}         # Get document metadata
+GET    /api/documents/{id}/download # Download file
+GET    /api/documents              # Search documents
+GET    /api/documents/expiring     # Get expiring documents
+DELETE /api/documents/{id}         # Soft delete
+```
 
-### Tracing  
-Distributed tracing with Zipkin. All requests are traced across services.
+### Payment Service (`/api/invoices`, `/api/subscriptions`, `/api/transactions`)
+```
+# Invoices
+POST   /api/invoices               # Create invoice
+GET    /api/invoices/{id}          # Get invoice
+GET    /api/invoices               # List all invoices
+GET    /api/invoices/customer/{customerId}
+GET    /api/invoices/overdue       # List overdue invoices
+POST   /api/invoices/{id}/pay      # Pay invoice (simulation)
+POST   /api/invoices/{id}/cancel   # Cancel invoice
 
-### Health Checks
-Health endpoints available at `/actuator/health` for each service.
+# Subscriptions
+GET    /api/subscriptions          # List all subscriptions
+GET    /api/subscriptions/{id}     # Get subscription
+POST   /api/subscriptions          # Create subscription
+PATCH  /api/subscriptions/{id}/upgrade
+PATCH  /api/subscriptions/{id}/cancel
 
-## Development
+# Transactions
+GET    /api/transactions?invoiceId=...
+```
 
-### Adding New Service
-1. Create new Spring Boot project with required dependencies
-2. Add Eureka client configuration
-3. Configure in API Gateway routes
-4. Add Kubernetes deployment files
-5. Update Docker Compose
+## 🔗 Communication Patterns
 
-### Testing
+### Synchronous (REST/WebClient)
+- `vehicle-service` → `customer-service`: Verify customer exists before assignment
+- `payment-service` → `customer-service`: Verify customer before invoicing
+- `payment-service` → `vehicle-service`: Verify vehicle before invoicing
+
+### Asynchronous (RabbitMQ Events)
+
+**Customer Events:**
+- `CustomerCreatedEvent` → Payment creates BASIC subscription, Document creates folder
+- `CustomerValidatedEvent` → Payment activates subscription
+- `CustomerSuspendedEvent` → Vehicle deactivates vehicles, Payment suspends billing
+- `CustomerDeletedEvent` → Vehicle orphans vehicles, Payment cancels subscriptions, Document archives documents
+- `CustomerReactivatedEvent` → Vehicle reactivates vehicles
+
+**Vehicle Events:**
+- `VehicleCreatedEvent` → Document creates folder
+- `VehicleAssignedEvent` → Payment creates activation invoice (50€)
+- `VehicleStatusChangedEvent` → Document notified for MAINTENANCE
+
+**Payment Events:**
+- `InvoiceCreatedEvent` → Document stores PDF
+- `InvoicePaidEvent` → Document marks as PAID, Customer reactivates if SUSPENDED
+- `InvoiceOverdueEvent` → Customer suspends client
+- `SubscriptionExpiredEvent` → Customer sets INACTIVE
+
+## 👤 User Roles
+
+| Role | Permissions |
+|------|-------------|
+| **SUPER_ADMIN** | Full platform access, manage admins |
+| **ADMIN** | Validate customers, view all fleets, manage disputes |
+| **CUSTOMER_ADMIN** | Manage own fleet, invoices, documents |
+| **CUSTOMER_USER** | View vehicles, upload documents |
+
+## 🔄 Business Flows
+
+### 1. New Company Registration
+```
+1. POST /api/customers (self-registration)
+   → Customer created with PENDING status
+   → CustomerCreatedEvent published
+   → Payment creates BASIC subscription (30 days free)
+   → Document creates empty folder
+
+2. ADMIN validates via PATCH /api/customers/{id}/validate
+   → Status → ACTIVE
+   → CustomerValidatedEvent published
+   → Payment activates subscription
+```
+
+### 2. Add Vehicle to Fleet
+```
+1. POST /api/vehicles (with customerId)
+   → Vehicle-service verifies customer via WebClient
+   → Vehicle created
+   → VehicleCreatedEvent published
+   → Document creates vehicle folder
+   → VehicleAssignedEvent published
+   → Payment creates activation invoice (50€)
+```
+
+### 3. Pay Invoice
+```
+1. POST /api/invoices/{id}/pay
+   → Invoice marked as PAID
+   → InvoicePaidEvent published
+   → Document marks invoice as PAID
+   → If customer was SUSPENDED → reactivated
+```
+
+## 🧪 Testing
+
 ```bash
-# Run tests for all services
+# Run all tests
 mvn test
 
-# Integration tests with Testcontainers
-mvn verify
+# Run specific service tests
+cd customer-service && mvn test
+
+# Integration tests with Docker
+docker-compose -f docker-compose.yml -f docker-compose.test.yml up
 ```
 
-## Production Considerations
+## 📊 Monitoring
 
-### Scaling
-- Use Kubernetes HPA for auto-scaling
-- Configure resource limits and requests
-- Use persistent volumes for document storage
+- **Health Checks**: `/actuator/health` on each service
+- **Metrics**: `/actuator/metrics` 
+- **RabbitMQ UI**: http://localhost:15672
+- **MinIO Console**: http://localhost:9001
 
-### Security
-- Use proper JWT secret management
-- Enable HTTPS/TLS
-- Configure network policies
-- Use secrets for sensitive configuration
+## 🛠️ Tech Stack
 
-### Monitoring
-- Set up alerting rules in Prometheus
-- Configure Grafana dashboards
-- Enable log aggregation (ELK stack)
-- Monitor business metrics
+- **Java 21**
+- **Spring Boot 3.3**
+- **Spring Cloud Gateway**
+- **Spring Data JPA / MongoDB**
+- **Spring AMQP (RabbitMQ)**
+- **PostgreSQL 16**
+- **MongoDB 7**
+- **MinIO (S3-compatible)**
+- **Redis**
+- **MapStruct**
+- **Resilience4j**
+- **Flyway**
+- **OpenAPI/Swagger**
 
-## Troubleshooting
+## 📁 Project Structure
 
-### Common Issues
-1. **Service not registering with Eureka**
-   - Check network connectivity
-   - Verify Eureka server is running
-   - Check service configuration
+```
+fleet-management/
+├── fleet-commons/          # Shared library (events, DTOs, exceptions)
+├── api-gateway/            # Spring Cloud Gateway
+├── customer-service/       # Customer management
+├── vehicle-service/        # Vehicle management
+├── document-service/       # Document storage
+├── payment-service/        # Invoicing & subscriptions
+├── docker-compose.yml      # Infrastructure + services
+└── README.md
+```
 
-2. **Rate limiting issues**
-   - Verify Redis connection
-   - Check rate limit configuration
-   - Monitor Redis memory usage
+## 📝 License
 
-3. **Kafka connection issues**
-   - Ensure Kafka and Zookeeper are running
-   - Check bootstrap servers configuration
-   - Verify topic creation
+MIT License - Fleet Management System
 
-### Logs
-Check service logs for detailed error information:
-```bash
-docker-compose logs <service-name>
-kubectl logs -f deployment/<service-name> -n fleet-management
+
+## 🪟 Windows Setup
+
+### Prerequisites
+1. **Docker Desktop** - [Download](https://docs.docker.com/desktop/install/windows-install/)
+   - Enable WSL2 backend during installation
+   - Start Docker Desktop and wait for it to be ready
+
+2. **Java 21** - [Download Eclipse Temurin](https://adoptium.net/)
+   - Verify: `java -version`
+
+3. **Maven 3.9+** - [Download](https://maven.apache.org/download.cgi)
+   - Add to PATH, verify: `mvn -version`
+
+### Quick Start (PowerShell)
+```powershell
+# 1. Navigate to project folder
+cd D:leet_management1
+
+# 2. Run the Windows start script
+.\start-windows.ps1
+
+# Or manually:
+# Build shared library first
+cd fleet-commons
+mvn clean install -DskipTests
+cd ..
+
+# Start infrastructure
+docker-compose up -d redis rabbitmq postgres-customer postgres-vehicle postgres-payment mongodb-document minio
+
+# Wait 30 seconds, then start services
+docker-compose up -d customer-service vehicle-service document-service payment-service api-gateway
+```
+
+### Troubleshooting
+
+**Error: "Docker is not running"**
+→ Start Docker Desktop from Start Menu, wait for the whale icon to stop animating.
+
+**Error: "unable to get image... pipe dockerDesktopLinuxEngine"**
+→ Docker Desktop n'est pas démarré ou utilise le mauvais backend.
+   1. Ouvre Docker Desktop
+   2. Settings → General → Use the WSL 2 based engine ✅
+   3. Redémarre Docker Desktop
+
+**Error: "version is obsolete"**
+→ C'est juste un warning, ignore-le. Ou supprime la ligne `version: '3.8'` du docker-compose.yml.
+
+**Port already in use**
+→ Change les ports dans docker-compose.yml:
+```yaml
+ports:
+  - "8081:8081"  # Change to "8091:8081" etc.
+```
+
+**Build fails with "fleet-commons not found"**
+→ Tu dois d'abord builder fleet-commons localement:
+```powershell
+cd fleet-commons
+mvn clean install -DskipTests
+```
+
+### Useful Commands
+```powershell
+# View all running containers
+docker ps
+
+# View logs for a service
+docker-compose logs -f customer-service
+
+# Restart a service
+docker-compose restart vehicle-service
+
+# Enter a container
+docker exec -it fleet-customer-service sh
+
+# Check RabbitMQ queues
+docker exec -it fleet-rabbitmq rabbitmqctl list_queues
+
+# Database access
+docker exec -it fleet-postgres-customer psql -U fleet_user -d fleet_customer
 ```

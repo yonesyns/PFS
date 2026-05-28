@@ -1,8 +1,0 @@
-com\fleet\document\model\Document.class
-com\fleet\document\controller\DocumentController.class
-com\fleet\document\DocumentServiceApplication.class
-com\fleet\document\model\DocumentStatus.class
-com\fleet\document\repository\DocumentRepository.class
-com\fleet\document\dto\DocumentDTO.class
-com\fleet\document\model\DocumentType.class
-com\fleet\document\service\DocumentService.class

@@ -1,9 +1,0 @@
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\model\Vehicle.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\model\VehicleStatus.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\VehicleServiceApplication.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\controller\VehicleController.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\dto\VehicleDTO.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\service\VehicleService.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\config\RedisConfig.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\model\VehicleType.java
-D:\PFS\vehicle-service\src\main\java\com\fleet\vehicle\repository\VehicleRepository.java
