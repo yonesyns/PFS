@@ -1,0 +1,365 @@
+name: fleet-management
+
+services:
+  # === INFRASTRUCTURE ===
+
+  redis:
+    image: redis:7-alpine
+    container_name: fleet-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: fleet-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: fleet_user
+      RABBITMQ_DEFAULT_PASS: fleet_password
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-customer:
+    image: postgres:16-alpine
+    container_name: fleet-postgres-customer
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: fleet_customer
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    volumes:
+      - postgres-customer-data:/var/lib/postgresql/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet_user -d fleet_customer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: fleet-postgres-auth
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: fleet_auth
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet_user -d fleet_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-vehicle:
+    image: postgres:16-alpine
+    container_name: fleet-postgres-vehicle
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: fleet_vehicle
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    volumes:
+      - postgres-vehicle-data:/var/lib/postgresql/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet_user -d fleet_vehicle"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-payment:
+    image: postgres:16-alpine
+    container_name: fleet-postgres-payment
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: fleet_payment
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    volumes:
+      - postgres-payment-data:/var/lib/postgresql/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet_user -d fleet_payment"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb-document:
+    image: mongo:7
+    container_name: fleet-mongodb-document
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: fleet_user
+      MONGO_INITDB_ROOT_PASSWORD: fleet_password
+      MONGO_INITDB_DATABASE: fleet_documents
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: fleet-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # === MICROSERVICES ===
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: auth-service
+    container_name: fleet-auth-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/fleet_auth
+      - SPRING_DATASOURCE_USERNAME=fleet_user
+      - SPRING_DATASOURCE_PASSWORD=fleet_password
+      - JWT_SECRET=fleet-management-dev-secret-key-change-me-please-32
+      - AUTH_ADMIN_EMAIL=admin@fleet.local
+      - AUTH_ADMIN_PASSWORD=Admin123!
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  customer-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: customer-service
+    container_name: fleet-customer-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-customer:5432/fleet_customer
+      - SPRING_DATASOURCE_USERNAME=fleet_user
+      - SPRING_DATASOURCE_PASSWORD=fleet_password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=fleet_user
+      - SPRING_RABBITMQ_PASSWORD=fleet_password
+    depends_on:
+      postgres-customer:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  vehicle-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: vehicle-service
+    container_name: fleet-vehicle-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-vehicle:5432/fleet_vehicle
+      - SPRING_DATASOURCE_USERNAME=fleet_user
+      - SPRING_DATASOURCE_PASSWORD=fleet_password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=fleet_user
+      - SPRING_RABBITMQ_PASSWORD=fleet_password
+      - SERVICES_CUSTOMER-SERVICE_URL=http://customer-service:8081
+    depends_on:
+      postgres-vehicle:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  document-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: document-service
+    container_name: fleet-document-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_MONGODB_URI=mongodb://fleet_user:fleet_password@mongodb-document:27017/fleet_documents?authSource=admin
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=fleet_user
+      - SPRING_RABBITMQ_PASSWORD=fleet_password
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      mongodb-document:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: payment-service
+    container_name: fleet-payment-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-payment:5432/fleet_payment
+      - SPRING_DATASOURCE_USERNAME=fleet_user
+      - SPRING_DATASOURCE_PASSWORD=fleet_password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=fleet_user
+      - SPRING_RABBITMQ_PASSWORD=fleet_password
+      - SERVICES_CUSTOMER-SERVICE_URL=http://customer-service:8081
+      - SERVICES_VEHICLE-SERVICE_URL=http://vehicle-service:8082
+    depends_on:
+      postgres-payment:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api-gateway
+    container_name: fleet-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - JWT_SECRET=fleet-management-dev-secret-key-change-me-please-32
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      vehicle-service:
+        condition: service_healthy
+      document-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  postgres-auth-data:
+  postgres-customer-data:
+  postgres-vehicle-data:
+  postgres-payment-data:
+  mongodb-data:
+  minio-data:
+  rabbitmq-data:
+
+networks:
+  fleet-network:
+    driver: bridge
