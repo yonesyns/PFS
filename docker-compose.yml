@@ -148,6 +148,15 @@ services:
       timeout: 5s
       retries: 5
 
+  mailhog:
+    image: mailhog/mailhog
+    container_name: fleet-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - fleet-network
+
   # === MICROSERVICES ===
 
   customer-service:
@@ -300,6 +309,17 @@ services:
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_USERNAME=fleet_user
       - SPRING_RABBITMQ_PASSWORD=fleet_password
+      - SPRING_MAIL_HOST=mailhog
+      - SPRING_MAIL_PORT=1025
+      - MAIL_USERNAME=noreply@fleet.com
+      - MAIL_PASSWORD=
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
     networks:
       - fleet-network
     restart: on-failure
