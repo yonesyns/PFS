@@ -1,24 +1,29 @@
 package com.fleet.commons.event.customer;
 
-import com.fleet.commons.event.BaseEvent;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 import java.util.UUID;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-@SuperBuilder
+@Builder
 @NoArgsConstructor
-public class CustomerValidatedEvent extends BaseEvent<CustomerValidatedEvent.CustomerValidatedPayload> {
+@AllArgsConstructor
+public class CustomerValidatedEvent {
+    private String eventType;
+    private String source;
+    private CustomerValidatedPayload payload;
 
     @Data
+    @Builder
     @NoArgsConstructor
-    @SuperBuilder
+    @AllArgsConstructor
     public static class CustomerValidatedPayload {
         private UUID customerId;
         private UUID validatedBy;
+        private String companyName;
+        private String email;
     }
 }

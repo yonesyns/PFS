@@ -63,7 +63,7 @@ public class MaintenanceService {
         Maintenance saved = maintenanceRepository.save(maintenance);
         log.info("Maintenance scheduled: {} for vehicle: {}", saved.getId(), vehicleId);
 
-        eventPublisher.publishMaintenanceScheduled(saved, vehicle.getPlateNumber());
+        eventPublisher.publishMaintenanceScheduled(saved, vehicle.getPlateNumber(), vehicle.getCustomerId());
 
         return toResponse(saved, vehicle.getPlateNumber());
     }
@@ -92,7 +92,7 @@ public class MaintenanceService {
             log.info("Vehicle {} status changed to MAINTENANCE", vehicle.getId());
         }
 
-        eventPublisher.publishMaintenanceStarted(saved, vehicle.getPlateNumber());
+        eventPublisher.publishMaintenanceStarted(saved, vehicle.getPlateNumber(), vehicle.getCustomerId());
 
         return toResponse(saved, vehicle.getPlateNumber());
     }
@@ -143,7 +143,11 @@ public class MaintenanceService {
         // Mettre à jour le plan de maintenance préventif si applicable
         updateMaintenancePlan(vehicle.getId(), request.getCompletedDate(), request.getMileageAtMaintenance());
 
-        eventPublisher.publishMaintenanceCompleted(saved, vehicle.getPlateNumber());
+        eventPublisher.publishMaintenanceCompleted(saved, vehicle.getPlateNumber(), vehicle.getCustomerId());
+        // ET AJOUTER APRÈS vehicleRepository.save(vehicle);
+        if (vehicle.getStatus() == VehicleStatus.ACTIVE) {
+            eventPublisher.publishVehicleBackToActive(vehicle.getId(), vehicle.getPlateNumber(), vehicle.getCustomerId());
+        }
 
         return toResponse(saved, vehicle.getPlateNumber());
     }
@@ -169,6 +173,7 @@ public class MaintenanceService {
             vehicleRepository.save(vehicle);
             log.info("Vehicle {} back to ACTIVE - no active maintenances", vehicle.getId());
         }
+        eventPublisher.publishMaintenanceCancelled(saved, vehicle.getPlateNumber(), vehicle.getCustomerId());
 
         return toResponse(saved, vehicle.getPlateNumber());
     }
@@ -272,7 +277,7 @@ public class MaintenanceService {
             maintenanceRepository.save(m);
 
             Vehicle vehicle = vehicleService.findVehicleById(m.getVehicleId());
-            eventPublisher.publishMaintenanceOverdue(m, vehicle.getPlateNumber());
+            eventPublisher.publishMaintenanceOverdue(m, vehicle.getPlateNumber(), vehicle.getCustomerId());
 
             log.warn("Maintenance {} is overdue for vehicle {}", m.getId(), m.getVehicleId());
         }

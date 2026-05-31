@@ -91,7 +91,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: fleet-postgres-notification
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: fleet_notification
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    volumes:
+      - postgres-notification-data:/var/lib/postgresql/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U fleet_user -d fleet_notification" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   mongodb-document:
     image: mongo:7
     container_name: fleet-mongodb-document
@@ -267,6 +284,32 @@ services:
       retries: 5
       start_period: 60s
 
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: notification-service
+    container_name: fleet-notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-notification:5432/fleet_notification
+      - SPRING_DATASOURCE_USERNAME=fleet_user
+      - SPRING_DATASOURCE_PASSWORD=fleet_password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=fleet_user
+      - SPRING_RABBITMQ_PASSWORD=fleet_password
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   api-gateway:
     build:
       context: .
@@ -290,6 +333,8 @@ services:
         condition: service_healthy
       payment-service:
         condition: service_healthy
+      notification-service:
+        condition: service_healthy
     networks:
       - fleet-network
     restart: on-failure
@@ -304,6 +349,7 @@ volumes:
   postgres-customer-data:
   postgres-vehicle-data:
   postgres-payment-data:
+  postgres-notification-data:
   mongodb-data:
   minio-data:
   rabbitmq-data:

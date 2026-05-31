@@ -13,6 +13,7 @@ COPY vehicle-service/pom.xml  ./vehicle-service/
 COPY document-service/pom.xml ./document-service/
 COPY payment-service/pom.xml  ./payment-service/
 COPY api-gateway/pom.xml      ./api-gateway/
+COPY notification-service/pom.xml ./notification-service/
 
 # Download all dependencies without building
 # This layer is cached as long as pom.xml files don't change
@@ -31,11 +32,12 @@ COPY vehicle-service/  ./vehicle-service/
 COPY document-service/ ./document-service/
 COPY payment-service/  ./payment-service/
 COPY api-gateway/      ./api-gateway/
+COPY notification-service/ ./notification-service/
 
 # Build shared library first, then all services in one pass
 RUN mvn clean install -pl fleet-commons -am -DskipTests --no-transfer-progress
 RUN mvn clean package \
-    -pl customer-service,vehicle-service,document-service,payment-service,api-gateway \
+    -pl customer-service,vehicle-service,document-service,payment-service,api-gateway,notification-service \
     -DskipTests \
     --no-transfer-progress
 
@@ -119,4 +121,20 @@ COPY --from=builder /build/api-gateway/target/*.jar app.jar
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
 
 EXPOSE 8080
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
+# ==========================================
+# STAGE 8: Runtime — Notification Service
+# ==========================================
+FROM eclipse-temurin:21-jre-jammy AS notification-service
+WORKDIR /app
+
+RUN groupadd --system spring && useradd --system --gid spring spring
+USER spring:spring
+
+COPY --from=builder /build/notification-service/target/*.jar app.jar
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
+
+EXPOSE 8085
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
