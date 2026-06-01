@@ -31,6 +31,7 @@ A complete B2B Fleet Management platform built with Spring Boot microservices ar
 | Service | Port | Database | Description |
 |---------|------|----------|-------------|
 | API Gateway | 8080 | Redis | Entry point, routing, rate limiting |
+| Auth Service | 8086 | PostgreSQL | JWT authentication and user accounts |
 | Customer Service | 8081 | PostgreSQL | B2B customer management |
 | Vehicle Service | 8082 | PostgreSQL | Fleet vehicle management |
 | Document Service | 8083 | MongoDB + MinIO | Document storage & management |
@@ -64,6 +65,7 @@ docker-compose logs -f api-gateway
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | API Gateway | http://localhost:8080 | - |
+| Auth Swagger | http://localhost:8086/swagger-ui.html | - |
 | Customer Swagger | http://localhost:8081/swagger-ui.html | - |
 | Vehicle Swagger | http://localhost:8082/swagger-ui.html | - |
 | Document Swagger | http://localhost:8083/swagger-ui.html | - |
@@ -72,6 +74,23 @@ docker-compose logs -f api-gateway
 | MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
 
 ## 📋 API Endpoints
+
+### Auth Service (`/api/auth`)
+```
+POST   /api/auth/register          # Register a customer user
+POST   /api/auth/login             # Login and receive access/refresh JWT tokens
+POST   /api/auth/refresh           # Refresh JWT tokens
+GET    /api/auth/me                # Current authenticated user
+```
+
+Default admin credentials are created by `auth-service` on first startup:
+`admin@fleet.com` / `Admin123!`.
+Override them with `FLEET_ADMIN_EMAIL` and `FLEET_ADMIN_PASSWORD`.
+Use the returned access token with `Authorization: Bearer <accessToken>`.
+
+The API Gateway protects every route by default except `POST /api/auth/register`,
+`POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/customers`,
+`OPTIONS /**`, and `/actuator/health`.
 
 ### Customer Service (`/api/customers`)
 ```

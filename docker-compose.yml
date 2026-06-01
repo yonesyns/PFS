@@ -54,6 +54,25 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: fleet-postgres-auth
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_DB: fleet_auth
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    networks:
+      - fleet-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet_user -d fleet_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   postgres-vehicle:
     image: postgres:16-alpine
     container_name: fleet-postgres-vehicle
@@ -158,6 +177,35 @@ services:
       - fleet-network
 
   # === MICROSERVICES ===
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: auth-service
+    container_name: fleet-auth-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/fleet_auth
+      - SPRING_DATASOURCE_USERNAME=fleet_user
+      - SPRING_DATASOURCE_PASSWORD=fleet_password
+      - JWT_SECRET=${JWT_SECRET:-fleet-management-jwt-secret-change-me-minimum-32-characters}
+      - FLEET_ADMIN_EMAIL=${FLEET_ADMIN_EMAIL:-admin@fleet.com}
+      - FLEET_ADMIN_PASSWORD=${FLEET_ADMIN_PASSWORD:-Admin123!}
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - fleet-network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   customer-service:
     build:
@@ -340,10 +388,13 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - JWT_SECRET=${JWT_SECRET:-fleet-management-jwt-secret-change-me-minimum-32-characters}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
     depends_on:
       redis:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
       customer-service:
         condition: service_healthy
@@ -366,6 +417,7 @@ services:
       start_period: 60s
 
 volumes:
+  postgres-auth-data:
   postgres-customer-data:
   postgres-vehicle-data:
   postgres-payment-data:

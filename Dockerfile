@@ -8,6 +8,7 @@ WORKDIR /build
 # Copy ALL pom files first (for optimal layer caching)
 COPY pom.xml .
 COPY fleet-commons/pom.xml    ./fleet-commons/
+COPY auth-service/pom.xml     ./auth-service/
 COPY customer-service/pom.xml ./customer-service/
 COPY vehicle-service/pom.xml  ./vehicle-service/
 COPY document-service/pom.xml ./document-service/
@@ -27,6 +28,7 @@ WORKDIR /build
 
 # Copy source code (this layer rebuilds when code changes)
 COPY fleet-commons/    ./fleet-commons/
+COPY auth-service/     ./auth-service/
 COPY customer-service/ ./customer-service/
 COPY vehicle-service/  ./vehicle-service/
 COPY document-service/ ./document-service/
@@ -37,12 +39,28 @@ COPY notification-service/ ./notification-service/
 # Build shared library first, then all services in one pass
 RUN mvn clean install -pl fleet-commons -am -DskipTests --no-transfer-progress
 RUN mvn clean package \
-    -pl customer-service,vehicle-service,document-service,payment-service,api-gateway,notification-service \
+    -pl auth-service,customer-service,vehicle-service,document-service,payment-service,api-gateway,notification-service \
     -DskipTests \
     --no-transfer-progress
 
 # ==========================================
-# STAGE 3: Runtime — Customer Service
+# STAGE 3: Runtime - Auth Service
+# ==========================================
+FROM eclipse-temurin:21-jre-jammy AS auth-service
+WORKDIR /app
+
+RUN groupadd --system spring && useradd --system --gid spring spring
+USER spring:spring
+
+COPY --from=builder /build/auth-service/target/*.jar app.jar
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
+
+EXPOSE 8086
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
+# ==========================================
+# STAGE 4: Runtime - Customer Service
 # ==========================================
 FROM eclipse-temurin:21-jre-jammy AS customer-service
 WORKDIR /app

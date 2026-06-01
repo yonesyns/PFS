@@ -12,6 +12,7 @@
 
     <modules>
         <module>fleet-commons</module>
+        <module>auth-service</module>
         <module>customer-service</module>
         <module>vehicle-service</module>
         <module>document-service</module>

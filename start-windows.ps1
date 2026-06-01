@@ -58,7 +58,7 @@ Write-Host "✅ fleet-commons built successfully" -ForegroundColor Green
 
 # Start infrastructure only first
 Write-Host "`n🏗️ Starting infrastructure services..." -ForegroundColor Cyan
-docker-compose up -d redis rabbitmq postgres-customer postgres-vehicle postgres-payment mongodb-document minio
+docker-compose up -d redis rabbitmq postgres-auth postgres-customer postgres-vehicle postgres-payment mongodb-document minio
 
 Write-Host "`n⏳ Waiting for infrastructure to be ready (30 seconds)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 30
@@ -77,14 +77,14 @@ foreach ($svc in $services) {
 
 # Start microservices
 Write-Host "`n🚀 Starting microservices..." -ForegroundColor Cyan
-docker-compose up -d customer-service vehicle-service document-service payment-service api-gateway
+docker-compose up -d auth-service customer-service vehicle-service document-service payment-service api-gateway
 
 Write-Host "`n⏳ Waiting for services to start (60 seconds)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 60
 
 # Final status
 Write-Host "`n📊 Service Status:" -ForegroundColor Cyan
-$allServices = @("fleet-api-gateway", "fleet-customer-service", "fleet-vehicle-service", "fleet-document-service", "fleet-payment-service")
+$allServices = @("fleet-api-gateway", "fleet-auth-service", "fleet-customer-service", "fleet-vehicle-service", "fleet-document-service", "fleet-payment-service")
 foreach ($svc in $allServices) {
     $status = docker inspect --format='{{.State.Status}}' $svc 2>$null
     $health = docker inspect --format='{{.State.Health.Status}}' $svc 2>$null

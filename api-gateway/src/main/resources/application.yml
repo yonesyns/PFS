@@ -26,6 +26,18 @@ spring:
             allowCredentials: true
             maxAge: 3600
       routes:
+        - id: auth-service
+          uri: http://auth-service:8086
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+
         - id: customer-service
           uri: http://customer-service:8081
           predicates:
@@ -116,6 +128,11 @@ spring:
       port: 6379
       timeout: 2000ms
       connect-timeout: 2000ms
+
+fleet:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:fleet-management-jwt-secret-change-me-minimum-32-characters}
 
 management:
   endpoints:

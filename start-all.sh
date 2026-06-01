@@ -11,7 +11,7 @@ cd ..
 
 # Start infrastructure
 echo "🏗️ Starting infrastructure..."
-docker-compose up -d redis rabbitmq postgres-customer postgres-vehicle postgres-payment mongodb-document minio
+docker-compose up -d redis rabbitmq postgres-auth postgres-customer postgres-vehicle postgres-payment mongodb-document minio
 
 # Wait for infrastructure
 echo "⏳ Waiting for infrastructure to be ready..."
@@ -19,7 +19,7 @@ sleep 30
 
 # Start services
 echo "🚀 Starting microservices..."
-docker-compose up -d customer-service vehicle-service document-service payment-service api-gateway
+docker-compose up -d auth-service customer-service vehicle-service document-service payment-service api-gateway
 
 echo "✅ Fleet Management System is starting up!"
 echo ""
