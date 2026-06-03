@@ -112,7 +112,7 @@ spring:
                 redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@userKeyResolver}"
         - id: notification-service
-          uri: lb://notification-service
+          uri: http://notification-service:8085
           predicates:
             - Path=/api/notifications/**
           filters:
