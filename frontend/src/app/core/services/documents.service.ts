@@ -42,4 +42,8 @@ export class DocumentsService {
   downloadUrl(id: string): string {
     return `${this.baseUrl}/${id}/download`;
   }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`).pipe(map((response) => response.data));
+  }
 }

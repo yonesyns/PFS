@@ -50,6 +50,20 @@ export class PaymentsService {
       .pipe(map((response) => response.data));
   }
 
+  upgradeSubscription(id: string, newPlan: PlanType, newAmount: number): Observable<Subscription> {
+    return this.http
+      .patch<ApiResponse<Subscription>>(`${this.apiUrl}/api/subscriptions/${id}/upgrade`, null, {
+        params: { newPlan, newAmount },
+      })
+      .pipe(map((response) => response.data));
+  }
+
+  cancelSubscription(id: string, reason: string): Observable<void> {
+    return this.http
+      .patch<ApiResponse<void>>(`${this.apiUrl}/api/subscriptions/${id}/cancel`, null, { params: { reason } })
+      .pipe(map((response) => response.data));
+  }
+
   transactions(invoiceId: string): Observable<PageResponse<Transaction>> {
     return this.http
       .get<ApiResponse<PageResponse<Transaction>>>(`${this.apiUrl}/api/transactions`, { params: { invoiceId, size: 50 } })

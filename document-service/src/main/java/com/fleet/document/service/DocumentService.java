@@ -113,7 +113,10 @@ public class DocumentService {
     public PageResponse<DocumentResponse> searchDocuments(DocumentSearchRequest request, Pageable pageable) {
         Page<DocumentEntity> page;
 
-        if (request.getDocumentType() != null) {
+        if (request.getDocumentType() != null && request.getStatus() != null) {
+            page = documentRepository.findByEntityTypeAndEntityIdAndDocumentTypeAndStatus(
+                    request.getEntityType(), request.getEntityId(), request.getDocumentType(), request.getStatus(), pageable);
+        } else if (request.getDocumentType() != null) {
             page = documentRepository.findByEntityTypeAndEntityIdAndDocumentType(
                     request.getEntityType(), request.getEntityId(), request.getDocumentType(), pageable);
         } else if (request.getStatus() != null) {

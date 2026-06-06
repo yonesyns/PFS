@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse, PageResponse } from '../models/api-response.model';
-import { Maintenance, MaintenanceAlert, MaintenanceRequest, MaintenanceStatus } from '../models/fleet.model';
+import { Maintenance, MaintenanceAlert, MaintenancePlan, MaintenancePlanRequest, MaintenanceRequest, MaintenanceStatus } from '../models/fleet.model';
 
 @Injectable({ providedIn: 'root' })
 export class MaintenanceService {
@@ -52,5 +52,23 @@ export class MaintenanceService {
 
   overdue(): Observable<MaintenanceAlert[]> {
     return this.http.get<ApiResponse<MaintenanceAlert[]>>(`${this.apiUrl}/api/maintenance/overdue`).pipe(map((response) => response.data));
+  }
+
+  plans(vehicleId: string): Observable<MaintenancePlan[]> {
+    return this.http
+      .get<ApiResponse<MaintenancePlan[]>>(`${this.apiUrl}/api/vehicles/${vehicleId}/maintenance-plan`)
+      .pipe(map((response) => response.data));
+  }
+
+  createPlan(vehicleId: string, request: MaintenancePlanRequest): Observable<MaintenancePlan> {
+    return this.http
+      .post<ApiResponse<MaintenancePlan>>(`${this.apiUrl}/api/vehicles/${vehicleId}/maintenance-plan`, request)
+      .pipe(map((response) => response.data));
+  }
+
+  deactivatePlan(planId: string): Observable<void> {
+    return this.http
+      .patch<ApiResponse<void>>(`${this.apiUrl}/api/maintenance-plan/${planId}/deactivate`, {})
+      .pipe(map((response) => response.data));
   }
 }

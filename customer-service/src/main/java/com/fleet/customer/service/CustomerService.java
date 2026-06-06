@@ -67,10 +67,10 @@ public class CustomerService {
     @Transactional(readOnly = true)
     public PageResponse<CustomerResponse> searchCustomers(CustomerSearchRequest searchRequest, Pageable pageable) {
         Page<Customer> page = customerRepository.searchCustomers(
-                searchRequest.getCompanyName(),
+                normalizeSearchValue(searchRequest.getCompanyName()),
                 searchRequest.getStatus(),
-                searchRequest.getVatNumber(),
-                searchRequest.getEmail(),
+                normalizeSearchValue(searchRequest.getVatNumber()),
+                normalizeSearchValue(searchRequest.getEmail()),
                 pageable);
         return buildPageResponse(page);
     }
@@ -205,5 +205,12 @@ public class CustomerService {
                 .first(page.isFirst())
                 .last(page.isLast())
                 .build();
+    }
+
+    private String normalizeSearchValue(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value.trim().toLowerCase();
     }
 }

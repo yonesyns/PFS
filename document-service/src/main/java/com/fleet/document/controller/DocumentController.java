@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -48,6 +49,7 @@ public class DocumentController {
                 .entityType(entityType)
                 .entityId(entityId)
                 .documentType(documentType)
+                .expiryDate(expiryDate != null && !expiryDate.isBlank() ? LocalDate.parse(expiryDate) : null)
                 .build();
 
         DocumentResponse response = documentService.uploadDocument(file, request, uploadedBy);

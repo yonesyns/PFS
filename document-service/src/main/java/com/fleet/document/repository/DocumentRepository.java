@@ -22,6 +22,9 @@ public interface DocumentRepository extends MongoRepository<DocumentEntity, Stri
     Page<DocumentEntity> findByEntityTypeAndEntityIdAndDocumentType(
             EntityType entityType, String entityId, DocumentType documentType, Pageable pageable);
 
+    Page<DocumentEntity> findByEntityTypeAndEntityIdAndDocumentTypeAndStatus(
+            EntityType entityType, String entityId, DocumentType documentType, DocumentStatus status, Pageable pageable);
+
     Page<DocumentEntity> findByEntityTypeAndEntityIdAndStatus(
             EntityType entityType, String entityId, DocumentStatus status, Pageable pageable);
 

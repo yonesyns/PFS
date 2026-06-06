@@ -62,6 +62,7 @@ public class CustomerController {
 
         CustomerSearchRequest searchRequest = CustomerSearchRequest.builder()
                 .companyName(companyName)
+                .status(status != null && !status.isBlank() ? com.fleet.customer.entity.CustomerStatus.valueOf(status) : null)
                 .vatNumber(vatNumber)
                 .email(email)
                 .build();

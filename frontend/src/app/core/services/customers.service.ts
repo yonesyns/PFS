@@ -33,6 +33,10 @@ export class CustomersService {
     return this.http.post<ApiResponse<Customer>>(this.baseUrl, request).pipe(map((response) => response.data));
   }
 
+  update(id: string, request: CustomerRequest): Observable<Customer> {
+    return this.http.put<ApiResponse<Customer>>(`${this.baseUrl}/${id}`, request).pipe(map((response) => response.data));
+  }
+
   validate(id: string): Observable<Customer> {
     return this.http.patch<ApiResponse<Customer>>(`${this.baseUrl}/${id}/validate`, {}).pipe(map((response) => response.data));
   }
@@ -41,5 +45,9 @@ export class CustomersService {
     return this.http
       .patch<ApiResponse<Customer>>(`${this.baseUrl}/${id}/status`, { status, reason })
       .pipe(map((response) => response.data));
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`).pipe(map((response) => response.data));
   }
 }

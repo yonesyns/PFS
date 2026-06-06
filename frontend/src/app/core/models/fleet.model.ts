@@ -2,6 +2,7 @@ export type CustomerStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | '
 export type VehicleStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'ORPHANED' | 'SOLD';
 export type FuelType = 'DIESEL' | 'PETROL' | 'ELECTRIC' | 'HYBRID' | 'LPG';
 export type MaintenanceStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'OVERDUE';
+export type MaintenanceIntervalType = 'KM_BASED' | 'TIME_BASED';
 export type MaintenanceType =
   | 'PREVENTIVE'
   | 'CORRECTIVE'
@@ -156,6 +157,27 @@ export interface MaintenanceAlert {
   overdueDays?: number;
   alertLevel?: string;
   message?: string;
+}
+
+export interface MaintenancePlan {
+  id: string;
+  vehicleId: string;
+  name: string;
+  intervalType: MaintenanceIntervalType;
+  intervalValue: number;
+  lastDoneDate?: string;
+  lastDoneMileage?: number;
+  nextDueDate?: string;
+  nextDueMileage?: number;
+  alertDaysBefore?: number;
+  isActive?: boolean;
+}
+
+export interface MaintenancePlanRequest {
+  name: string;
+  intervalType: MaintenanceIntervalType;
+  intervalValue: number;
+  alertDaysBefore?: number;
 }
 
 export interface Invoice {

@@ -26,6 +26,10 @@ export class VehiclesService {
     return this.http.post<ApiResponse<Vehicle>>(this.baseUrl, request).pipe(map((response) => response.data));
   }
 
+  update(id: string, request: VehicleRequest): Observable<Vehicle> {
+    return this.http.put<ApiResponse<Vehicle>>(`${this.baseUrl}/${id}`, request).pipe(map((response) => response.data));
+  }
+
   updateStatus(id: string, status: VehicleStatus, reason?: string): Observable<Vehicle> {
     return this.http
       .patch<ApiResponse<Vehicle>>(`${this.baseUrl}/${id}/status`, { status, reason })
@@ -44,5 +48,15 @@ export class VehiclesService {
 
   maintenanceDue(): Observable<Vehicle[]> {
     return this.http.get<ApiResponse<Vehicle[]>>(`${this.baseUrl}/maintenance-due`).pipe(map((response) => response.data));
+  }
+
+  expiringInsurance(days = 30): Observable<PageResponse<Vehicle>> {
+    return this.http
+      .get<ApiResponse<PageResponse<Vehicle>>>(`${this.baseUrl}/expiring-insurance`, { params: { days, size: 50 } })
+      .pipe(map((response) => response.data));
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`).pipe(map((response) => response.data));
   }
 }

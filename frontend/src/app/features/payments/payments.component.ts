@@ -23,7 +23,15 @@ import { VehiclesService } from '../../core/services/vehicles.service';
             <span class="section-kicker">Factures</span>
             <h2>{{ invoices().length }} facture(s)</h2>
           </div>
-          <button class="ghost-button" type="button" (click)="loadAll()">Actualiser</button>
+          <div class="row-actions">
+            <select [value]="paymentMethod()" (change)="paymentMethod.set($any($event.target).value)">
+              @for (method of paymentMethods; track method) {
+                <option [value]="method">{{ method }}</option>
+              }
+            </select>
+            <button class="ghost-button" type="button" (click)="loadOverdueInvoices()">En retard</button>
+            <button class="ghost-button" type="button" (click)="loadAll()">Actualiser</button>
+          </div>
         </div>
         @if (message()) {
           <p class="success-message">{{ message() }}</p>
@@ -120,6 +128,7 @@ import { VehiclesService } from '../../core/services/vehicles.service';
                 <th>Plan</th>
                 <th>Mensuel</th>
                 <th>Statut</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -129,10 +138,18 @@ import { VehiclesService } from '../../core/services/vehicles.service';
                   <td>{{ subscription.planType }}</td>
                   <td>{{ money(subscription.monthlyAmount, 'EUR') }}</td>
                   <td><span class="status-pill" [class]="statusClass(subscription.status)">{{ subscription.status }}</span></td>
+                  <td>
+                    <div class="row-actions">
+                      @if (subscription.status === 'ACTIVE') {
+                        <button class="small-button" type="button" (click)="upgradeSubscription(subscription)">Changer plan</button>
+                        <button class="small-button muted-button" type="button" (click)="cancelSubscription(subscription)">Annuler</button>
+                      }
+                    </div>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="4" class="empty-cell">Aucun abonnement trouve.</td>
+                  <td colspan="5" class="empty-cell">Aucun abonnement trouve.</td>
                 </tr>
               }
             </tbody>
@@ -193,7 +210,8 @@ export class PaymentsComponent {
   private readonly customersService = inject(CustomersService);
   private readonly vehiclesService = inject(VehiclesService);
 
-  readonly paymentMethod: PaymentMethod = 'CARD';
+  readonly paymentMethods: PaymentMethod[] = ['CARD', 'TRANSFER', 'DIRECT_DEBIT', 'CASH'];
+  readonly paymentMethod = signal<PaymentMethod>('CARD');
   readonly planTypes: PlanType[] = ['BASIC', 'PRO', 'ENTERPRISE'];
   readonly customers = signal<Customer[]>([]);
   readonly vehicles = signal<Vehicle[]>([]);
@@ -236,6 +254,16 @@ export class PaymentsComponent {
     this.paymentsService.subscriptions().subscribe({ next: (items) => this.subscriptions.set(items ?? []), error: () => this.subscriptions.set([]) });
   }
 
+  loadOverdueInvoices(): void {
+    this.paymentsService.overdueInvoices().subscribe({
+      next: (page) => {
+        this.invoices.set(page.content ?? []);
+        this.message.set('Factures en retard affichees.');
+      },
+      error: (error) => this.error.set(error?.error?.message ?? 'Chargement des factures en retard impossible.'),
+    });
+  }
+
   createInvoice(): void {
     if (this.invoiceForm.invalid) {
       return;
@@ -270,7 +298,7 @@ export class PaymentsComponent {
   }
 
   pay(invoice: Invoice): void {
-    this.paymentsService.payInvoice(invoice.id, this.paymentMethod).subscribe({
+    this.paymentsService.payInvoice(invoice.id, this.paymentMethod()).subscribe({
       next: () => {
         this.message.set('Paiement enregistre.');
         this.loadAll();
@@ -297,6 +325,39 @@ export class PaymentsComponent {
     this.paymentsService.transactions(invoice.id).subscribe({
       next: (page) => this.transactions.set(page.content ?? []),
       error: (error) => this.error.set(error?.error?.message ?? 'Chargement des transactions impossible.'),
+    });
+  }
+
+  upgradeSubscription(subscription: Subscription): void {
+    const plan = window.prompt('Nouveau plan: BASIC, PRO ou ENTERPRISE', subscription.planType);
+    if (!plan || !this.planTypes.includes(plan as PlanType)) {
+      return;
+    }
+    const amountValue = window.prompt('Nouveau montant mensuel en centimes', String(subscription.monthlyAmount));
+    const amount = Number(amountValue);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return;
+    }
+    this.paymentsService.upgradeSubscription(subscription.id, plan as PlanType, amount).subscribe({
+      next: () => {
+        this.message.set('Abonnement mis a jour.');
+        this.loadAll();
+      },
+      error: (error) => this.error.set(error?.error?.message ?? 'Mise a jour abonnement impossible.'),
+    });
+  }
+
+  cancelSubscription(subscription: Subscription): void {
+    const reason = window.prompt('Motif d annulation', 'Annule depuis Fleet Manager');
+    if (!reason) {
+      return;
+    }
+    this.paymentsService.cancelSubscription(subscription.id, reason).subscribe({
+      next: () => {
+        this.message.set('Abonnement annule.');
+        this.loadAll();
+      },
+      error: (error) => this.error.set(error?.error?.message ?? 'Annulation abonnement impossible.'),
     });
   }
 

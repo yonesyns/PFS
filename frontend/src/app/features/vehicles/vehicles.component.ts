@@ -70,10 +70,12 @@ import { VehiclesService } from '../../core/services/vehicles.service';
                       </select>
                       <select [value]="vehicle.customerId || ''" (change)="assign(vehicle, $any($event.target).value)">
                         <option value="">Non affecte</option>
-                        @for (customer of customers(); track customer.id) {
+                        @for (customer of activeCustomers(); track customer.id) {
                           <option [value]="customer.id">{{ customer.companyName }}</option>
                         }
                       </select>
+                      <button class="small-button" type="button" (click)="edit(vehicle)">Modifier</button>
+                      <button class="small-button muted-button" type="button" (click)="deleteVehicle(vehicle)">Supprimer</button>
                     </div>
                   </td>
                 </tr>
@@ -88,12 +90,20 @@ import { VehiclesService } from '../../core/services/vehicles.service';
       </section>
 
       <section class="form-panel">
-        <span class="section-kicker">Nouveau vehicule</span>
-        <h2>Ajouter au parc</h2>
-        <form class="stack-form" [formGroup]="form" (ngSubmit)="create()">
+        <span class="section-kicker">{{ editingVehicle() ? 'Edition vehicule' : 'Nouveau vehicule' }}</span>
+        <h2>{{ editingVehicle() ? 'Modifier le vehicule' : 'Ajouter au parc' }}</h2>
+        <form class="stack-form" [formGroup]="form" (ngSubmit)="save()">
           <div class="two-columns">
-            <label>Immatriculation <input formControlName="plateNumber" /></label>
-            <label>VIN <input formControlName="vin" /></label>
+            <label>
+              Immatriculation
+              <input formControlName="plateNumber" placeholder="AA-123-AA" />
+              <small>Format requis: AA-123-AA</small>
+            </label>
+            <label>
+              VIN
+              <input formControlName="vin" placeholder="1HGCM82633A004352" />
+              <small>17 caracteres, sans I, O ou Q</small>
+            </label>
           </div>
           <div class="two-columns">
             <label>Marque <input formControlName="brand" /></label>
@@ -119,19 +129,26 @@ import { VehiclesService } from '../../core/services/vehicles.service';
             Client
             <select formControlName="customerId">
               <option value="">Non affecte</option>
-              @for (customer of customers(); track customer.id) {
+              @for (customer of activeCustomers(); track customer.id) {
                 <option [value]="customer.id">{{ customer.companyName }}</option>
               }
             </select>
+            <small>Le client doit etre actif. Sinon, creez le vehicule non affecte puis validez le client.</small>
           </label>
           <div class="two-columns">
             <label>Date immatriculation <input type="date" formControlName="registrationDate" /></label>
             <label>Fin assurance <input type="date" formControlName="insuranceExpiryDate" /></label>
           </div>
+          <label>Boitier GPS <input formControlName="gpsDeviceId" /></label>
           <label>Controle technique <input type="date" formControlName="technicalInspectionDate" /></label>
-          <button class="primary-button" type="submit" [disabled]="form.invalid || saving()">
-            {{ saving() ? 'Ajout...' : 'Ajouter le vehicule' }}
-          </button>
+          <div class="row-actions">
+            <button class="primary-button" type="submit" [disabled]="form.invalid || saving()">
+              {{ saving() ? 'Enregistrement...' : editingVehicle() ? 'Enregistrer' : 'Ajouter le vehicule' }}
+            </button>
+            @if (editingVehicle()) {
+              <button class="ghost-button" type="button" (click)="cancelEdit()">Annuler</button>
+            }
+          </div>
         </form>
       </section>
     </div>
@@ -146,14 +163,16 @@ export class VehiclesComponent {
   readonly fuelTypes: FuelType[] = ['DIESEL', 'PETROL', 'ELECTRIC', 'HYBRID', 'LPG'];
   readonly vehicles = signal<Vehicle[]>([]);
   readonly customers = signal<Customer[]>([]);
+  readonly activeCustomers = signal<Customer[]>([]);
   readonly statusFilter = signal('');
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly message = signal<string | null>(null);
+  readonly editingVehicle = signal<Vehicle | null>(null);
 
   readonly form = this.fb.nonNullable.group({
-    plateNumber: ['', Validators.required],
-    vin: ['', Validators.required],
+    plateNumber: ['', [Validators.required, Validators.pattern(/^[A-Z]{2}-\d{3}-[A-Z]{2}$/)]],
+    vin: ['', [Validators.required, Validators.pattern(/^[A-HJ-NPR-Z0-9]{17}$/)]],
     brand: ['', Validators.required],
     model: ['', Validators.required],
     year: [2026, Validators.required],
@@ -164,6 +183,7 @@ export class VehiclesComponent {
     registrationDate: [''],
     insuranceExpiryDate: [''],
     technicalInspectionDate: [''],
+    gpsDeviceId: [''],
   });
 
   constructor() {
@@ -182,8 +202,15 @@ export class VehiclesComponent {
 
   loadCustomers(): void {
     this.customersService.list().subscribe({
-      next: (page) => this.customers.set(page.content ?? []),
-      error: () => this.customers.set([]),
+      next: (page) => {
+        const customers = page.content ?? [];
+        this.customers.set(customers);
+        this.activeCustomers.set(customers.filter((customer) => customer.status === 'ACTIVE'));
+      },
+      error: () => {
+        this.customers.set([]);
+        this.activeCustomers.set([]);
+      },
     });
   }
 
@@ -192,33 +219,72 @@ export class VehiclesComponent {
     this.load();
   }
 
-  create(): void {
+  save(): void {
     if (this.form.invalid) {
       return;
     }
     const value = this.form.getRawValue();
+    const plateNumber = value.plateNumber.trim().toUpperCase();
+    const vin = value.vin.trim().toUpperCase();
+
+    this.form.patchValue({ plateNumber, vin });
+    if (this.form.invalid) {
+      this.error.set('Verifiez le format: plaque AA-123-AA et VIN de 17 caracteres sans I, O ou Q.');
+      return;
+    }
+
     this.saving.set(true);
     this.error.set(null);
     this.message.set(null);
 
-    this.vehiclesService
-      .create({
+    const request = {
         ...value,
+        plateNumber,
+        vin,
         fuelType: (value.fuelType || undefined) as FuelType | undefined,
         customerId: value.customerId || undefined,
         registrationDate: value.registrationDate || undefined,
         insuranceExpiryDate: value.insuranceExpiryDate || undefined,
         technicalInspectionDate: value.technicalInspectionDate || undefined,
-      })
+        gpsDeviceId: value.gpsDeviceId || undefined,
+      };
+    const editing = this.editingVehicle();
+    const operation = editing ? this.vehiclesService.update(editing.id, request) : this.vehiclesService.create(request);
+
+    operation
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: () => {
-          this.message.set('Vehicule ajoute.');
-          this.form.reset({ year: 2026, mileage: 0 });
+          this.message.set(editing ? 'Vehicule mis a jour.' : 'Vehicule ajoute.');
+          this.cancelEdit();
           this.load();
         },
-        error: (error) => this.error.set(error?.error?.message ?? 'Ajout du vehicule impossible.'),
+        error: (error) => this.error.set(this.errorMessage(error, 'Ajout du vehicule impossible.')),
       });
+  }
+
+  edit(vehicle: Vehicle): void {
+    this.editingVehicle.set(vehicle);
+    this.form.reset({
+      plateNumber: vehicle.plateNumber,
+      vin: vehicle.vin,
+      brand: vehicle.brand,
+      model: vehicle.model,
+      year: vehicle.year,
+      color: vehicle.color ?? '',
+      fuelType: vehicle.fuelType ?? '',
+      mileage: vehicle.mileage ?? 0,
+      customerId: vehicle.customerId ?? '',
+      registrationDate: vehicle.registrationDate ?? '',
+      insuranceExpiryDate: vehicle.insuranceExpiryDate ?? '',
+      technicalInspectionDate: vehicle.technicalInspectionDate ?? '',
+      gpsDeviceId: vehicle.gpsDeviceId ?? '',
+    });
+  }
+
+  cancelEdit(): void {
+    this.editingVehicle.set(null);
+    this.form.reset({ year: 2026, mileage: 0 });
   }
 
   changeStatus(vehicle: Vehicle, status: VehicleStatus): void {
@@ -230,7 +296,7 @@ export class VehiclesComponent {
         this.message.set('Statut vehicule mis a jour.');
         this.load();
       },
-      error: (error) => this.error.set(error?.error?.message ?? 'Mise a jour impossible.'),
+      error: (error) => this.error.set(this.errorMessage(error, 'Mise a jour impossible.')),
     });
   }
 
@@ -241,7 +307,20 @@ export class VehiclesComponent {
         this.message.set(customerId ? 'Vehicule affecte.' : 'Vehicule desaffecte.');
         this.load();
       },
-      error: (error) => this.error.set(error?.error?.message ?? 'Affectation impossible.'),
+      error: (error) => this.error.set(this.errorMessage(error, 'Affectation impossible.')),
+    });
+  }
+
+  deleteVehicle(vehicle: Vehicle): void {
+    if (!window.confirm(`Supprimer le vehicule ${vehicle.plateNumber} ?`)) {
+      return;
+    }
+    this.vehiclesService.delete(vehicle.id).subscribe({
+      next: () => {
+        this.message.set('Vehicule supprime.');
+        this.load();
+      },
+      error: (error) => this.error.set(this.errorMessage(error, 'Suppression impossible.')),
     });
   }
 
@@ -251,5 +330,10 @@ export class VehiclesComponent {
 
   statusClass(status: string): string {
     return `status-${status.toLowerCase()}`;
+  }
+
+  private errorMessage(error: unknown, fallback: string): string {
+    const httpError = error as { error?: { message?: string } };
+    return httpError.error?.message ?? fallback;
   }
 }

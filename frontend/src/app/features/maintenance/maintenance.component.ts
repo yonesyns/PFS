@@ -1,7 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
-import { Maintenance, MaintenanceAlert, MaintenanceStatus, MaintenanceType, Vehicle } from '../../core/models/fleet.model';
+import {
+  Maintenance,
+  MaintenanceAlert,
+  MaintenanceIntervalType,
+  MaintenancePlan,
+  MaintenanceStatus,
+  MaintenanceType,
+  Vehicle,
+} from '../../core/models/fleet.model';
 import { MaintenanceService } from '../../core/services/maintenance.service';
 import { VehiclesService } from '../../core/services/vehicles.service';
 
@@ -157,6 +165,83 @@ import { VehiclesService } from '../../core/services/vehicles.service';
       </section>
     </div>
 
+    <div class="module-grid">
+      <section class="table-panel">
+        <div class="panel-header">
+          <div>
+            <span class="section-kicker">Plans preventifs</span>
+            <h2>{{ maintenancePlans().length }} plan(s)</h2>
+          </div>
+          <button class="ghost-button" type="button" (click)="loadPlans()">Actualiser</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Vehicule</th>
+                <th>Plan</th>
+                <th>Frequence</th>
+                <th>Prochaine echeance</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (plan of maintenancePlans(); track plan.id) {
+                <tr>
+                  <td>{{ vehiclePlate(plan.vehicleId) }}</td>
+                  <td>
+                    <strong>{{ plan.name }}</strong>
+                    <small>{{ plan.isActive === false ? 'Inactif' : 'Actif' }}</small>
+                  </td>
+                  <td>{{ plan.intervalValue }} {{ plan.intervalType === 'KM_BASED' ? 'km' : 'mois' }}</td>
+                  <td>{{ plan.nextDueDate || plan.nextDueMileage || '-' }}</td>
+                  <td>
+                    @if (plan.isActive !== false) {
+                      <button class="small-button muted-button" type="button" (click)="deactivatePlan(plan)">Desactiver</button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">Selectionnez un vehicule pour afficher ses plans.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="form-panel">
+        <span class="section-kicker">Plan preventif</span>
+        <h2>Creer un plan</h2>
+        <form class="stack-form" [formGroup]="planForm" (ngSubmit)="createPlan()">
+          <label>
+            Vehicule
+            <select formControlName="vehicleId" (change)="loadPlans()">
+              <option value="">Selectionner</option>
+              @for (vehicle of vehicles(); track vehicle.id) {
+                <option [value]="vehicle.id">{{ vehicle.plateNumber }} - {{ vehicle.brand }} {{ vehicle.model }}</option>
+              }
+            </select>
+          </label>
+          <label>Nom du plan <input formControlName="name" placeholder="Vidange periodique" /></label>
+          <div class="two-columns">
+            <label>
+              Frequence
+              <select formControlName="intervalType">
+                @for (interval of intervalTypes; track interval) {
+                  <option [value]="interval">{{ interval === 'KM_BASED' ? 'Kilometrage' : 'Temps' }}</option>
+                }
+              </select>
+            </label>
+            <label>Valeur <input type="number" formControlName="intervalValue" /></label>
+          </div>
+          <label>Alerte avant echeance <input type="number" formControlName="alertDaysBefore" /></label>
+          <button class="primary-button" type="submit" [disabled]="planForm.invalid || saving()">Creer le plan</button>
+        </form>
+      </section>
+    </div>
+
     @if (completionTarget()) {
       <section class="form-panel overlay-panel">
         <span class="section-kicker">Cloture</span>
@@ -194,8 +279,10 @@ export class MaintenanceComponent {
     'BATTERY_REPLACEMENT',
     'GENERAL_OVERHAUL',
   ];
+  readonly intervalTypes: MaintenanceIntervalType[] = ['KM_BASED', 'TIME_BASED'];
   readonly vehicles = signal<Vehicle[]>([]);
   readonly maintenances = signal<Maintenance[]>([]);
+  readonly maintenancePlans = signal<MaintenancePlan[]>([]);
   readonly upcoming = signal<MaintenanceAlert[]>([]);
   readonly overdue = signal<MaintenanceAlert[]>([]);
   readonly status = signal<MaintenanceStatus>('SCHEDULED');
@@ -224,6 +311,14 @@ export class MaintenanceComponent {
     notes: [''],
   });
 
+  readonly planForm = this.fb.nonNullable.group({
+    vehicleId: ['', Validators.required],
+    name: ['', Validators.required],
+    intervalType: ['TIME_BASED' as MaintenanceIntervalType, Validators.required],
+    intervalValue: [6, [Validators.required, Validators.min(1)]],
+    alertDaysBefore: [30, [Validators.required, Validators.min(1)]],
+  });
+
   constructor() {
     this.loadVehicles();
     this.loadAll();
@@ -243,6 +338,19 @@ export class MaintenanceComponent {
     });
     this.maintenanceService.upcoming().subscribe({ next: (items) => this.upcoming.set(items ?? []), error: () => this.upcoming.set([]) });
     this.maintenanceService.overdue().subscribe({ next: (items) => this.overdue.set(items ?? []), error: () => this.overdue.set([]) });
+    this.loadPlans();
+  }
+
+  loadPlans(): void {
+    const vehicleId = this.planForm.getRawValue().vehicleId;
+    if (!vehicleId) {
+      this.maintenancePlans.set([]);
+      return;
+    }
+    this.maintenanceService.plans(vehicleId).subscribe({
+      next: (plans) => this.maintenancePlans.set(plans ?? []),
+      error: () => this.maintenancePlans.set([]),
+    });
   }
 
   setStatus(status: MaintenanceStatus): void {
@@ -319,6 +427,40 @@ export class MaintenanceComponent {
         this.loadAll();
       },
       error: (error) => this.error.set(error?.error?.message ?? 'Annulation impossible.'),
+    });
+  }
+
+  createPlan(): void {
+    if (this.planForm.invalid) {
+      return;
+    }
+    const value = this.planForm.getRawValue();
+    this.saving.set(true);
+    this.maintenanceService
+      .createPlan(value.vehicleId, {
+        name: value.name,
+        intervalType: value.intervalType,
+        intervalValue: value.intervalValue,
+        alertDaysBefore: value.alertDaysBefore,
+      })
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: () => {
+          this.message.set('Plan de maintenance cree.');
+          this.planForm.patchValue({ name: '', intervalValue: 6, alertDaysBefore: 30 });
+          this.loadPlans();
+        },
+        error: (error) => this.error.set(error?.error?.message ?? 'Creation du plan impossible.'),
+      });
+  }
+
+  deactivatePlan(plan: MaintenancePlan): void {
+    this.maintenanceService.deactivatePlan(plan.id).subscribe({
+      next: () => {
+        this.message.set('Plan desactive.');
+        this.loadPlans();
+      },
+      error: (error) => this.error.set(error?.error?.message ?? 'Desactivation impossible.'),
     });
   }
 

@@ -24,11 +24,11 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     boolean existsByVatNumber(String vatNumber);
 
     @Query("SELECT c FROM Customer c WHERE " +
-           "(:companyName IS NULL OR LOWER(c.companyName) LIKE LOWER(CONCAT('%', :companyName, '%'))) AND " +
+           "(:companyName = '' OR LOWER(c.companyName) LIKE CONCAT('%', :companyName, '%')) AND " +
            "(:status IS NULL OR c.status = :status) AND " +
-           "(:vatNumber IS NULL OR LOWER(c.vatNumber) LIKE LOWER(CONCAT('%', :vatNumber, '%'))) AND " +
-           "(:email IS NULL OR LOWER(c.email) LIKE LOWER(CONCAT('%', :email, '%'))) AND " +
-           "c.status != 'DELETED'")
+           "(:vatNumber = '' OR LOWER(c.vatNumber) LIKE CONCAT('%', :vatNumber, '%')) AND " +
+           "(:email = '' OR LOWER(c.email) LIKE CONCAT('%', :email, '%')) AND " +
+           "c.status != com.fleet.customer.entity.CustomerStatus.DELETED")
     Page<Customer> searchCustomers(
             @Param("companyName") String companyName,
             @Param("status") CustomerStatus status,

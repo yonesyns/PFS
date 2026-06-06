@@ -36,6 +36,12 @@ import { DocumentsService } from '../../core/services/documents.service';
               <option [value]="type">{{ type }}</option>
             }
           </select>
+          <select formControlName="status">
+            <option value="">Tous les statuts</option>
+            @for (status of documentStatuses; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
           <button class="primary-button" type="submit" [disabled]="searchForm.invalid">Rechercher</button>
         </form>
 
@@ -69,6 +75,7 @@ import { DocumentsService } from '../../core/services/documents.service';
                   <td>{{ document.expiryDate || '-' }}</td>
                   <td>
                     <button class="small-button" type="button" (click)="download(document)">Telecharger</button>
+                    <button class="small-button muted-button" type="button" (click)="deleteDocument(document)">Supprimer</button>
                   </td>
                 </tr>
               } @empty {
@@ -141,6 +148,7 @@ export class DocumentsComponent {
 
   readonly entityTypes: EntityType[] = ['CUSTOMER', 'VEHICLE', 'PAYMENT'];
   readonly documentTypes: DocumentType[] = ['INSURANCE', 'LICENSE', 'CONTRACT', 'INVOICE', 'VEHICLE_PHOTO', 'TECHNICAL_REPORT', 'REGISTRATION_CERTIFICATE', 'OTHER'];
+  readonly documentStatuses: DocumentStatus[] = ['ACTIVE', 'EXPIRED', 'ARCHIVED', 'PAID'];
   readonly documents = signal<FleetDocument[]>([]);
   readonly expiring = signal<FleetDocument[]>([]);
   readonly selectedFile = signal<File | null>(null);
@@ -152,6 +160,7 @@ export class DocumentsComponent {
     entityType: ['CUSTOMER' as EntityType, Validators.required],
     entityId: ['', Validators.required],
     documentType: [''],
+    status: [''],
   });
 
   readonly uploadForm = this.fb.nonNullable.group({
@@ -170,7 +179,7 @@ export class DocumentsComponent {
       return;
     }
     const value = this.searchForm.getRawValue();
-    this.documentsService.search(value.entityType, value.entityId, value.documentType as DocumentType | '').subscribe({
+    this.documentsService.search(value.entityType, value.entityId, value.documentType as DocumentType | '', value.status as DocumentStatus | '').subscribe({
       next: (page) => this.documents.set(page.content ?? []),
       error: (error) => this.error.set(error?.error?.message ?? 'Recherche impossible.'),
     });
@@ -195,7 +204,7 @@ export class DocumentsComponent {
         next: () => {
           this.message.set('Document depose.');
           this.selectedFile.set(null);
-          this.searchForm.patchValue({ entityType: value.entityType, entityId: value.entityId, documentType: value.documentType });
+          this.searchForm.patchValue({ entityType: value.entityType, entityId: value.entityId, documentType: value.documentType, status: '' });
           this.search();
           this.loadExpiring();
         },
@@ -212,6 +221,20 @@ export class DocumentsComponent {
 
   download(document: FleetDocument): void {
     window.open(this.documentsService.downloadUrl(document.id), '_blank');
+  }
+
+  deleteDocument(document: FleetDocument): void {
+    if (!window.confirm(`Supprimer ${document.originalName || document.fileName} ?`)) {
+      return;
+    }
+    this.documentsService.delete(document.id).subscribe({
+      next: () => {
+        this.message.set('Document supprime.');
+        this.search();
+        this.loadExpiring();
+      },
+      error: (error) => this.error.set(error?.error?.message ?? 'Suppression impossible.'),
+    });
   }
 
   statusClass(status: string): string {
